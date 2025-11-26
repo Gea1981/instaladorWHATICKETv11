@@ -246,7 +246,7 @@ backend_db_seed() {
 
   sudo su - deploy <<EOF
   cd /home/deploy/${instancia_add}/backend
-  npx sequelize db:seed:all
+  npm run db:seed
 EOF
 
   sleep 2
