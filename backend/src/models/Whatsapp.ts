@@ -111,12 +111,12 @@ class Whatsapp extends Model<Whatsapp> {
 
   //@Column
   //sendIdQueue: number;
-  
+
   @Column
   transferQueueId: number;
 
   @Column
-  timeToTransfer: number;  
+  timeToTransfer: number;
 
 
   @ForeignKey(() => Prompt)
@@ -141,15 +141,45 @@ class Whatsapp extends Model<Whatsapp> {
 
   @Column
   expiresTicket: number;
-  
+
   @Column
   number: string;
-  
+
   @Column
   expiresInactiveMessage: string;
 
   @Column
-   type: string;  
+  type: string;
+
+  @Default(null)
+  @AllowNull
+  @Column(DataType.TEXT)
+  tokenTelegram: string;
+
+  @Default(null)
+  @AllowNull
+  @Column(DataType.TEXT)
+  instagramUser: string;
+
+  @Default(null)
+  @AllowNull
+  @Column(DataType.TEXT)
+  instagramKey: string;
+
+  @Default(null)
+  @AllowNull
+  @Column(DataType.TEXT)
+  fbPageId: string;
+
+  @Default(null)
+  @AllowNull
+  @Column(DataType.JSONB)
+  fbObject: object;
+
+  @Default(null)
+  @AllowNull
+  @Column(DataType.STRING)
+  wavoip: string;
 }
 
 export default Whatsapp;

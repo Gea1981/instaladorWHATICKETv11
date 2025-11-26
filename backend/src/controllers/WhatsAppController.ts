@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { getIO } from "../libs/socket";
 import { removeWbot, restartWbot } from "../libs/wbot";
 import { StartWhatsAppSession } from "../services/WbotServices/StartWhatsAppSession";
+import { StartTbotSession } from "../services/TbotServices/StartTbotSession";
 
 import CreateWhatsAppService from "../services/WhatsappService/CreateWhatsAppService";
 import DeleteWhatsAppService from "../services/WhatsappService/DeleteWhatsAppService";
@@ -21,10 +22,15 @@ interface WhatsappData {
   status?: string;
   isDefault?: boolean;
   token?: string;
-  //sendIdQueue?: number;
-  //timeSendQueue?: number;
+  type?: string;
+  tokenTelegram?: string;
+  instagramUser?: string;
+  instagramKey?: string;
+  fbPageId?: string;
+  fbObject?: object;
+  wavoip?: string;
   transferQueueId?: number;
-  timeToTransfer?: number;  
+  timeToTransfer?: number;
   promptId?: number;
   maxUseBotQueues?: number;
   timeUseBotQueues?: number;
@@ -51,14 +57,19 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     isDefault,
     greetingMessage,
     complationMessage,
-	ratingMessage,
+    ratingMessage,
     outOfHoursMessage,
     queueIds,
     token,
-    //timeSendQueue,
-    //sendIdQueue,
-	transferQueueId,
-	timeToTransfer,
+    type,
+    tokenTelegram,
+    instagramUser,
+    instagramKey,
+    fbPageId,
+    fbObject,
+    wavoip,
+    transferQueueId,
+    timeToTransfer,
     promptId,
     maxUseBotQueues,
     timeUseBotQueues,
@@ -73,15 +84,20 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     isDefault,
     greetingMessage,
     complationMessage,
-	ratingMessage,
+    ratingMessage,
     outOfHoursMessage,
     queueIds,
     companyId,
     token,
-    //timeSendQueue,
-    //sendIdQueue,
-	transferQueueId,
-	timeToTransfer,	
+    type,
+    tokenTelegram,
+    instagramUser,
+    instagramKey,
+    fbPageId,
+    fbObject,
+    wavoip,
+    transferQueueId,
+    timeToTransfer,
     promptId,
     maxUseBotQueues,
     timeUseBotQueues,
@@ -89,7 +105,13 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     expiresInactiveMessage
   });
 
-  StartWhatsAppSession(whatsapp, companyId);
+  // Iniciar sesión según el tipo de canal
+  if (whatsapp.type === 'telegram') {
+    StartTbotSession(whatsapp);
+  } else if (whatsapp.type === 'whatsapp' || !whatsapp.type) {
+    StartWhatsAppSession(whatsapp, companyId);
+  }
+  // Instagram y Facebook se manejan vía NotificaMe Hub (webhook)
 
   const io = getIO();
   io.to(`company-${companyId}-mainchannel`).emit(`company-${companyId}-whatsapp`, {

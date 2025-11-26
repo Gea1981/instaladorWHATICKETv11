@@ -18,10 +18,15 @@ interface Request {
   isDefault?: boolean;
   token?: string;
   provider?: string;
-  //sendIdQueue?: number;
-  //timeSendQueue?: number;
+  type?: string;
+  tokenTelegram?: string;
+  instagramUser?: string;
+  instagramKey?: string;
+  fbPageId?: string;
+  fbObject?: object;
+  wavoip?: string;
   transferQueueId?: number;
-  timeToTransfer?: number;    
+  timeToTransfer?: number;
   promptId?: number;
   maxUseBotQueues?: number;
   timeUseBotQueues?: number;
@@ -46,10 +51,15 @@ const CreateWhatsAppService = async ({
   companyId,
   token = "",
   provider = "beta",
-  //timeSendQueue,
-  //sendIdQueue,
+  type = "whatsapp",
+  tokenTelegram,
+  instagramUser,
+  instagramKey,
+  fbPageId,
+  fbObject,
+  wavoip,
   transferQueueId,
-  timeToTransfer,    
+  timeToTransfer,
   promptId,
   maxUseBotQueues = 3,
   timeUseBotQueues = 0,
@@ -87,7 +97,7 @@ const CreateWhatsAppService = async ({
         async value => {
           if (!value) return false;
           const nameExists = await Whatsapp.findOne({
-            where: { name: value, companyId}
+            where: { name: value, companyId }
           });
           return !nameExists;
         }
@@ -157,10 +167,15 @@ const CreateWhatsAppService = async ({
       companyId,
       token,
       provider,
-      //timeSendQueue,
-      //sendIdQueue,
-	  transferQueueId,
-	  timeToTransfer,	  
+      type,
+      tokenTelegram,
+      instagramUser,
+      instagramKey,
+      fbPageId,
+      fbObject,
+      wavoip,
+      transferQueueId,
+      timeToTransfer,
       promptId,
       maxUseBotQueues,
       timeUseBotQueues,
