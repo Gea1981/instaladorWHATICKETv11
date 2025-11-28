@@ -1,76 +1,217 @@
 #!/bin/bash
 
+# Script de instalación mejorado con logging
+# Versión: 2.0 - Con sistema de logs
+
+# Configurar logging
+LOG_DIR="/var/log/chasap-install"
+LOG_FILE="${LOG_DIR}/install-$(date +%Y%m%d-%H%M%S).log"
+
+# Crear directorio de logs
+sudo mkdir -p ${LOG_DIR}
+sudo chmod 755 ${LOG_DIR}
+
+# Función de logging
+log() {
+    local level=$1
+    shift
+    local message="$@"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[${timestamp}] [${level}] ${message}" | sudo tee -a ${LOG_FILE}
+    echo "[${level}] ${message}"
+}
+
+log_info() {
+    log "INFO" "$@"
+}
+
+log_error() {
+    log "ERROR" "$@"
+}
+
+log_success() {
+    log "SUCCESS" "$@"
+}
+
+# Mostrar ubicación del log
+echo "========================================="
+echo " Instalador Chasap v2.0"
+echo "========================================="
+echo ""
+echo "📝 Log de instalación: ${LOG_FILE}"
+echo ""
+echo "Para ver el log en tiempo real (otra terminal):"
+echo "  sudo tail -f ${LOG_FILE}"
+echo ""
+echo "========================================="
+echo ""
+sleep 3
+
+log_info "Iniciando instalación de Chasap v2.0"
+
 # reset shell colors
 tput init
 
-# https://stackoverflow.com/questions/59895/how-to-get-the-source-directory-of-a-bash-script-from-within-the-script-itself
+# Obtener directorio del script
 SOURCE="${BASH_SOURCE[0]}"
-while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+while [ -h "$SOURCE" ]; do
   PROJECT_ROOT="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
   SOURCE="$(readlink "$SOURCE")"
-  [[ $SOURCE != /* ]] && SOURCE="$PROJECT_ROOT/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  [[ $SOURCE != /* ]] && SOURCE="$PROJECT_ROOT/$SOURCE"
 done
 PROJECT_ROOT="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
 
-# required imports
-source "${PROJECT_ROOT}"/variables/manifest.sh
-source "${PROJECT_ROOT}"/utils/manifest.sh
-source "${PROJECT_ROOT}"/lib/manifest.sh
+log_info "Directorio del proyecto: ${PROJECT_ROOT}"
 
-# user configs file
+# Importar módulos
+log_info "Cargando módulos..."
+source "${PROJECT_ROOT}"/variables/manifest.sh 2>&1 | sudo tee -a ${LOG_FILE}
+source "${PROJECT_ROOT}"/utils/manifest.sh 2>&1 | sudo tee -a ${LOG_FILE}
+source "${PROJECT_ROOT}"/lib/manifest.sh 2>&1 | sudo tee -a ${LOG_FILE}
+
+# Archivo de configuración
 if [[ ! -e "${PROJECT_ROOT}"/config ]]; then
-  cat << EOF > "${PROJECT_ROOT}"/config
+  log_info "Creando archivo de configuración..."
+  cat <<EOF > "${PROJECT_ROOT}"/config
 deploy_password=${deploy_password}
 mysql_root_password=${mysql_root_password}
 db_pass=${db_pass}
 EOF
 fi
 
-# this file has passwords
+# Proteger archivo de configuración
 sudo su - root <<EOF
 chown root:root "${PROJECT_ROOT}"/config
 chmod 700 "${PROJECT_ROOT}"/config
 EOF
 source "${PROJECT_ROOT}"/config
 
-# self update
-system_self_update
+log_info "========================================="
+log_info "Fase 1: Actualización del sistema"
+log_info "========================================="
 
-# interactive CLI
-inquiry_options
+# Auto-actualización
+log_info "Verificando actualizaciones del instalador..."
+system_self_update 2>&1 | sudo tee -a ${LOG_FILE}
 
-# dependencies related
-system_update
-system_node_install
-system_pm2_install
-system_docker_install
-system_puppeteer_dependencies
-system_snapd_install
-system_nginx_install
-system_certbot_install
+# Menú interactivo
+log_info "Iniciando configuración interactiva..."
+inquiry_options 2>&1 | sudo tee -a ${LOG_FILE}
 
-# system config
-system_create_user
+log_info "========================================="
+log_info "Fase 2: Instalación de dependencias"
+log_info "========================================="
 
-# backend related
-system_git_clone
-backend_set_env
-backend_redis_create
-backend_node_dependencies
-backend_node_build
-backend_db_migrate
-backend_db_seed
-backend_start_pm2
-backend_nginx_setup
+log_info "Actualizando sistema..."
+system_update 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_update"; exit 1; }
 
-# frontend related
-frontend_set_env
-frontend_node_dependencies
-frontend_node_build
-frontend_start_pm2
-frontend_nginx_setup
+log_info "Instalando Node.js..."
+system_node_install 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_node_install"; exit 1; }
 
-# network related
-system_nginx_conf
-system_nginx_restart
-system_certbot_setup
+log_info "Instalando PM2..."
+system_pm2_install 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_pm2_install"; exit 1; }
+
+log_info "Instalando Docker..."
+system_docker_install 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_docker_install"; exit 1; }
+
+log_info "Instalando dependencias de Puppeteer..."
+system_puppeteer_dependencies 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_puppeteer_dependencies"; exit 1; }
+
+log_info "Instalando Snapd..."
+system_snapd_install 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_snapd_install"; exit 1; }
+
+log_info "Instalando Nginx..."
+system_nginx_install 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_nginx_install"; exit 1; }
+
+log_info "Instalando Certbot..."
+system_certbot_install 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_certbot_install"; exit 1; }
+
+log_info "========================================="
+log_info "Fase 3: Configuración del sistema"
+log_info "========================================="
+
+log_info "Creando usuario deploy..."
+system_create_user 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_create_user"; exit 1; }
+
+log_info "========================================="
+log_info "Fase 4: Configuración del Backend"
+log_info "========================================="
+
+log_info "Clonando repositorio..."
+system_git_clone 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_git_clone"; exit 1; }
+
+log_info "Configurando variables de entorno..."
+backend_set_env 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en backend_set_env"; exit 1; }
+
+log_info "Creando Redis y PostgreSQL..."
+backend_redis_create 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en backend_redis_create"; exit 1; }
+
+log_info "Instalando dependencias de Node.js..."
+backend_node_dependencies 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en backend_node_dependencies"; exit 1; }
+
+log_info "Compilando código del backend..."
+backend_node_build 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en backend_node_build"; exit 1; }
+
+log_info "Ejecutando migraciones de base de datos..."
+backend_db_migrate 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en backend_db_migrate"; exit 1; }
+
+log_info "Ejecutando seeds de base de datos..."
+backend_db_seed 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en backend_db_seed"; exit 1; }
+
+log_info "Iniciando backend con PM2..."
+backend_start_pm2 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en backend_start_pm2"; exit 1; }
+
+log_info "Configurando Nginx para backend..."
+backend_nginx_setup 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en backend_nginx_setup"; exit 1; }
+
+log_info "========================================="
+log_info "Fase 5: Configuración del Frontend"
+log_info "========================================="
+
+log_info "Configurando variables de entorno del frontend..."
+frontend_set_env 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en frontend_set_env"; exit 1; }
+
+log_info "Instalando dependencias del frontend..."
+frontend_node_dependencies 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en frontend_node_dependencies"; exit 1; }
+
+log_info "Compilando frontend..."
+frontend_node_build 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en frontend_node_build"; exit 1; }
+
+log_info "Iniciando frontend con PM2..."
+frontend_start_pm2 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en frontend_start_pm2"; exit 1; }
+
+log_info "Configurando Nginx para frontend..."
+frontend_nginx_setup 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en frontend_nginx_setup"; exit 1; }
+
+log_info "========================================="
+log_info "Fase 6: Configuración de Red"
+log_info "========================================="
+
+log_info "Configurando Nginx..."
+system_nginx_conf 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_nginx_conf"; exit 1; }
+
+log_info "Reiniciando Nginx..."
+system_nginx_restart 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_nginx_restart"; exit 1; }
+
+log_info "Configurando certificados SSL..."
+system_certbot_setup 2>&1 | sudo tee -a ${LOG_FILE} || { log_error "Fallo en system_certbot_setup"; exit 1; }
+
+log_success "========================================="
+log_success "✅ INSTALACIÓN COMPLETADA EXITOSAMENTE"
+log_success "========================================="
+log_success ""
+log_success "📝 Log completo: ${LOG_FILE}"
+log_success ""
+log_success "🔐 Credenciales de acceso:"
+log_success "   URL: https://${frontend_url}"
+log_success "   Email: admin@admin.com"
+log_success "   Contraseña: 123456"
+log_success ""
+log_success "⚠️  IMPORTANTE: Cambiar la contraseña después del primer login"
+log_success ""
+log_success "📊 Comandos útiles:"
+log_success "   Ver logs del backend:  pm2 logs ${instancia_add}-backend"
+log_success "   Ver logs del frontend: pm2 logs ${instancia_add}-frontend"
+log_success "   Ver estado de PM2:     pm2 status"
+log_success "   Ver log de instalación: cat ${LOG_FILE}"
+log_success ""

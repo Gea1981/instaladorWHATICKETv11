@@ -13,21 +13,35 @@ backend_redis_create() {
 
   sleep 2
 
-  sudo su - root <<EOF
-  usermod -aG docker deploy
-  docker run --name redis-${instancia_add} -p ${redis_port}:6379 --restart always --detach redis redis-server --requirepass ${mysql_root_password}
+  # Crear contenedor Redis
+  echo "📦 Creando contenedor Redis..."
+  sudo usermod -aG docker deploy
+  sudo docker run --name redis-${instancia_add} -p ${redis_port}:6379 --restart always --detach redis redis-server --requirepass ${mysql_root_password}
+  
+  if [ $? -eq 0 ]; then
+    echo "✅ Redis creado exitosamente"
+  else
+    echo "⚠️  Redis ya existe o error al crear, continuando..."
+  fi
   
   sleep 2
-  sudo su - postgres <<EOF
-  createdb ${instancia_add};
-  psql
-  CREATE USER ${instancia_add} SUPERUSER INHERIT CREATEDB CREATEROLE;
-  ALTER USER ${instancia_add} PASSWORD '${mysql_root_password}';
-  \q
-  exit
+  
+  # Crear base de datos PostgreSQL
+  echo "🗄️  Creando base de datos PostgreSQL..."
+  sudo -u postgres psql <<EOF
+CREATE DATABASE ${instancia_add};
+CREATE USER ${instancia_add} WITH SUPERUSER INHERIT CREATEDB CREATEROLE;
+ALTER USER ${instancia_add} PASSWORD '${mysql_root_password}';
+GRANT ALL PRIVILEGES ON DATABASE ${instancia_add} TO ${instancia_add};
 EOF
 
-sleep 2
+  if [ $? -eq 0 ]; then
+    echo "✅ Base de datos PostgreSQL creada exitosamente"
+  else
+    echo "⚠️  Error al crear base de datos o ya existe"
+  fi
+
+  sleep 2
 }
 
 #######################################
